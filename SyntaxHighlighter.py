@@ -37,9 +37,8 @@ def highlight(widget, event=None):
             start = f"1.0+{start_idx}c"
             end   = f"1.0+{end_idx}c"
             widget.tag_add("string", start, end)
-            i += 2  # bir aç bir kap
+            i += 2
         else:
-            # Kapanmayan tırnak, sonuna kadar
             start = f"1.0+{start_idx}c"
             widget.tag_add("string", start, "end-1c")
             i += 1
@@ -116,4 +115,5 @@ def highlight(widget, event=None):
         if has_tag_range(start, end, "string") or has_tag_range(start, end, "comment"):
             continue
         widget.tag_add("operator", start, end)
+
 
