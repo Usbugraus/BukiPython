@@ -74,8 +74,15 @@ editor.grid(padx=10, pady=(0, 10), row=1, column=0, columnspan=2, sticky="nsew")
 text = tk.Text(editor, wrap="none", width=60, height=20, font=("Consolas", 10), bd=1, undo=True, padx=5, pady=5)
 
 for tag, style in SYNTAX_COLORS.items():
-    text.tag_configure(tag, foreground=style[0], font=style[1])
-    
+    text.tag_configure(tag, foreground=style[0], font=style[1], selectforeground="#ffffff")
+
+def resource_path(filename):
+    if getattr(sys, 'frozen', False):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    return os.path.join(base_path, filename)
 
 def save_file(force=False):
     global current_file, changed
@@ -234,35 +241,24 @@ def run_():
         
         if not current_file:
             with tempfile.NamedTemporaryFile(
-                mode="w",
-                suffix=".py",
-                delete=False,
-                encoding="utf-8"
+                mode="w", suffix=".py", delete=False, encoding="utf-8"
             ) as f:
                 f.write(code)
-                temp_path = f.name 
+                temp_path = f.name
 
             subprocess.Popen(
-                [
-                    "cmd.exe",
-                    "/k",
-                    f"title {title} &&",
-                    sys.executable,
-                    temp_path
-                ],
+                f'cmd.exe /k title {title} && "{python_path}" "{temp_path}"',
                 creationflags=subprocess.CREATE_NEW_CONSOLE
             )
-        elif current_file:
+        else:
+            if changed:
+                save_file()
+                
             subprocess.Popen(
-                [
-                    "cmd.exe",
-                    "/k",
-                    f"title {title} &&",
-                    sys.executable,
-                    current_file
-                ],
+                f'cmd.exe /k title {title} && "{python_path}" "{current_file}"',
                 creationflags=subprocess.CREATE_NEW_CONSOLE
             )
+
     else:
         if language.get() == "türkçe":
             messagebox.showwarning("Seçili Değil", "Python yorumlayıcısı seçilmedi.")
@@ -321,7 +317,7 @@ def show_about():
     elif language.get() == "english":
         messagebox.showinfo("About", "BukiPython v1.0.0\n© Copyright 2025 Buğra US")
     elif language.get() == "deutsch":
-        messagebox.showinfo("Über", "BukiPython v1.1.5\n© Urheberrecht 2025 Buğra US")
+        messagebox.showinfo("Über", "BukiPython v1.0.0\n© Urheberrecht 2025 Buğra US")
     
 def run_terminal():
     subprocess.Popen(
