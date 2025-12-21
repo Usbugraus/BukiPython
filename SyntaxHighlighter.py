@@ -115,5 +115,3 @@ def highlight(widget, event=None):
         if has_tag_range(start, end, "string") or has_tag_range(start, end, "comment"):
             continue
         widget.tag_add("operator", start, end)
-
-

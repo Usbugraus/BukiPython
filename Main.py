@@ -33,13 +33,14 @@ win.report_callback_exception = report_callback_exception
 changed = False
 current_file = None
 filepath = None
+font_size = 10
 SYNTAX_COLORS = {
-    "keyword": ["#bf0000", ("Consolas", 10, "bold")],
-    "string": ["#00bf00", ("Consolas", 10)],
-    "comment": ["#808080", ("Consolas", 10, "italic")],
-    "number": ["#0000bf", ("Consolas", 10)],
-    "builtin": ["#bf8000", ("Consolas", 10)],
-    "operator": ["#404040", ("Consolas", 10)],
+    "keyword": ["#bf0000", ("Consolas", font_size, "bold")],
+    "string": ["#00bf00", ("Consolas", font_size)],
+    "comment": ["#808080", ("Consolas", font_size, "italic")],
+    "number": ["#0000bf", ("Consolas", font_size)],
+    "builtin": ["#bf8000", ("Consolas", font_size)],
+    "operator": ["#404040", ("Consolas", font_size)],
 }
 
 configuration_file = "Configuration.json"
@@ -65,13 +66,18 @@ else:
 show_tooltip = tk.BooleanVar(value=configuration["show_tooltip"])
 language = tk.StringVar(value=configuration["language"])
 auto_save = tk.BooleanVar(value=configuration["auto_save"])
+fullscreen = tk.BooleanVar(value=False)
+cover = tk.BooleanVar(value=False)
 
 menu_labels = {}
 
 editor = tk.Frame(win, bd=1, relief="raised", width=800, height=600)
-editor.grid(padx=10, pady=(0, 10), row=1, column=0, columnspan=2, sticky="nsew")
+editor.grid(padx=10, pady=10, row=1, column=0, columnspan=2, sticky="nsew")
 
-text = tk.Text(editor, wrap="none", width=60, height=20, font=("Consolas", 10), bd=1, undo=True, padx=5, pady=5)
+status_bar = tk.Label(win, bd=1, relief="raised", text="", padx=5, pady=5, anchor="w")
+status_bar.grid(padx=10, pady=(0, 10), row=2, column=0, columnspan=2, sticky="ew")
+
+text = tk.Text(editor, wrap="none", width=60, height=20, font=("Consolas", font_size), bd=1, undo=True, padx=5, pady=5)
 
 for tag, style in SYNTAX_COLORS.items():
     text.tag_configure(tag, foreground=style[0], font=style[1], selectforeground="#ffffff")
@@ -97,8 +103,8 @@ def save_file(force=False):
 
         win.title(f'BukiPython - {current_file}')
         changed = False
+        update_status()
         save.config(state="disabled")
-
 
 def save_as():
     global current_file, filepath
@@ -147,6 +153,7 @@ def open_file():
         text.edit_modified(False)
         update()
         save.config(state="disabled")
+        update_status()
 
 def new_file():
     global current_file, filepath, changed
@@ -174,6 +181,7 @@ def new_file():
     text.yview_moveto(0)
     text.config(xscrollcommand=scroll_h.set, yscrollcommand=scroll.set)
     save.config(state="disabled")
+    update_status()
     win.update_idletasks()
 
 def update_title():
@@ -364,6 +372,15 @@ def update_settings(*args):
                         "Satırın Girintisini Azalt"
                         ]
                     },
+            "view":{"label": "Görünüm",
+                   "menus": [
+                        "Yazı Tipi Boyutunu Arttır",
+                        "Yazı Tipi Boyutunu Azalt",
+                        "Varsayılan Yazı Tipi Boyutunu Ayarla",
+                        "Tam Ekran",
+                        "Ekranı Kapla"
+                       ]
+                   },
             "run":{"label": "Çalıştır",
                    "menus": [
                        "Çalıştır",
@@ -403,6 +420,15 @@ def update_settings(*args):
                         "Decrease the indent of the line"
                         ]
                     },
+            "view":{"label": "View",
+                   "menus": [
+                        "Increase the Font Size",
+                        "Decrease the Font Size",
+                        "Set the Default Font Size",
+                        "Fullscreen",
+                        "Cover the Screen"
+                       ]
+                   },
             "run":{"label": "Run",
                    "menus": [
                        "Run",
@@ -442,10 +468,19 @@ def update_settings(*args):
                         "Einzug Der Zeile Verringern"
                         ]
                     },
+            "view":{"label": "Ansicht",
+                   "menus": [
+                        "Schriftgröße vergrößern",
+                        "Schriftgröße verkleinern",
+                        "Standard-Schriftgröße festlegen",
+                        "Vollbild",
+                        "Bildschirm abdecken"
+                        ]
+                   },
             "run":{"label": "Laufen",
                    "menus": [
-                       "Laufen",
-                       "Öffne die Eingabeaufforderung",
+                        "Laufen",
+                        "Öffne die Eingabeaufforderung",
                         "Python-Interpreter auswählen"
                        ]
                    },
@@ -500,17 +535,25 @@ def update_settings(*args):
     edit_menu.entryconfig(8, label=menu_labels["edit"]["menus"][6])
     edit_menu.entryconfig(9, label=menu_labels["edit"]["menus"][7])
     
-    menu.entryconfig(3, label=menu_labels["run"]["label"])
+    menu.entryconfig(3, label=menu_labels["view"]["label"])
+    view_menu.entryconfig(0, label=menu_labels["view"]["menus"][0])
+    view_menu.entryconfig(1, label=menu_labels["view"]["menus"][1])
+    view_menu.entryconfig(2, label=menu_labels["view"]["menus"][2])
+    view_menu.entryconfig(4, label=menu_labels["view"]["menus"][3])
+    view_menu.entryconfig(5, label=menu_labels["view"]["menus"][4])
+    
+    menu.entryconfig(4, label=menu_labels["run"]["label"])
     run_menu.entryconfig(0, label=menu_labels["run"]["menus"][0])
     run_menu.entryconfig(1, label=menu_labels["run"]["menus"][1])
     run_menu.entryconfig(3, label=menu_labels["run"]["menus"][2])
     
-    menu.entryconfig(4, label=menu_labels["settings"]["label"])
+    menu.entryconfig(5, label=menu_labels["settings"]["label"])
     pre_menu.entryconfig(0, label=menu_labels["settings"]["menus"][0])
     pre_menu.entryconfig(1, label=menu_labels["settings"]["menus"][1])
     pre_menu.entryconfig(2, label=menu_labels["settings"]["menus"][2])
     
     update_title()
+    update_status()
     
     config = {
         "show_tooltip": show_tooltip.get(),
@@ -539,7 +582,70 @@ def select_python():
             
         with open(python_config_file, "w", encoding="utf-8") as f:
             pyfile = json.dump(pycf, f, ensure_ascii=False, indent=4)
+            
+def update_fonts():
+    global SYNTAX_COLORS
+    text.config(font=("Consolas", font_size))
+
+    for tag, style in SYNTAX_COLORS.items():
+        color = style[0]
+        font_style = list(style[1])
+
+        font_style[1] = font_size
+
+        text.tag_configure(
+            tag,
+            foreground=color,
+            font=tuple(font_style),
+            selectforeground="#ffffff"
+        )
         
+def increase_size():
+    global font_size
+    if font_size < 48:
+        font_size += 1
+        update_fonts()
+        highlight(text)
+
+def decrease_size():
+    global font_size
+    if font_size > 6:
+        font_size -= 1
+        update_fonts()
+        highlight(text)
+        
+def reset_size():
+    global font_size
+    font_size = 10
+    update_fonts()
+    highlight(text)
+    
+def update_view(*args):
+    if fullscreen.get():
+        win.attributes("-fullscreen", True)
+    else:
+        win.attributes("-fullscreen", False)
+        
+    if cover.get():
+        toolbar_frame.grid_forget()
+        other_toolbar_frame.grid_forget()
+        status_bar.grid_forget()
+    else:
+        toolbar_frame.grid(row=0, column=0, sticky="ew")
+        other_toolbar_frame.grid(row=0, column=1, sticky="e")
+        status_bar.grid(padx=10, pady=(0, 10), row=2, column=0, columnspan=2, sticky="ew")
+        
+def update_status():
+    global current_file
+    if language.get() == "türkçe":
+        newfile_status = "Yeni"
+    if language.get() == "english":
+        newfile_status = "New"
+    if language.get() == "deutsch":
+        newfile_status = "Neu"
+    
+    status_bar.config(text=f"{os.path.basename(current_file) if current_file else newfile_status} | {text.index('insert')}")
+
 if hasattr(sys, "_MEIPASS"):
     icon_path = os.path.join(sys._MEIPASS, "Icon.ico")
 else:
@@ -552,16 +658,16 @@ toolbar_frame = tk.Frame(win)
 toolbar_frame.grid(row=0, column=0, sticky="ew")
 
 file_toolbar = tk.Frame(toolbar_frame, bd=1, relief="raised", padx=3, pady=3)
-file_toolbar.grid(row=0, column=0, padx=(10, 0), pady=10, sticky="w")
+file_toolbar.grid(row=0, column=0, padx=(10, 0), pady=(10, 0), sticky="w")
 
 run_toolbar = tk.Frame(toolbar_frame, bd=1, relief="raised", padx=3, pady=3)
-run_toolbar.grid(row=0, column=1, padx=(10, 0), sticky="w")
+run_toolbar.grid(row=0, column=1, padx=(10, 0), sticky="w", pady=(10, 0))
 
 other_toolbar_frame = tk.Frame(win)
 other_toolbar_frame.grid(row=0, column=1, sticky="e")
 
 other_toolbar = tk.Frame(other_toolbar_frame, bd=1, relief="raised", padx=3, pady=3)
-other_toolbar.grid(row=0, column=0, padx=10, pady=10, sticky="e")
+other_toolbar.grid(row=0, column=0, padx=10, pady=(10, 0), sticky="e")
 
 new = tk.Button(file_toolbar, text="", width=5, pady=4, bd=0, command=new_file, activebackground="yellow", font=("Segoe Fluent Icons", 10))
 new.grid(row=0, column=0)
@@ -595,10 +701,14 @@ text.pack(fill="both", padx=(5, 0), pady=(5, 0), expand=True)
 show_tooltip.trace_add("write", update_settings)
 language.trace_add("write", update_settings)
 auto_save.trace_add("write", update_settings)
+fullscreen.trace_add("write", update_view)
+cover.trace_add("write", update_view)
 
 text.bind("<<Modified>>", update)
 text.bind("<Return>", auto_indent, add="+")
 text.bind("<KeyRelease>", autosv, add='+')
+text.bind("<KeyRelease>", lambda e: update_status(), add='+')
+text.bind("<Button-1>", lambda e: update_status(), add='+')
 text.bind("<Shift-Tab>", unindent)
 text.bind("<Tab>", indent)
 win.bind("<Control-s>", lambda e: save_file())
@@ -608,6 +718,9 @@ win.bind("<Control-n>", lambda e: new_file())
 win.bind("<Control-z>", lambda e: undo_())
 win.bind("<Control-y>", lambda e: redo_())
 win.bind("<Control-t>", lambda e: run_terminal())
+win.bind("<Control-plus>", lambda e: increase_size())
+win.bind("<Control-minus>", lambda e: decrease_size())
+win.bind("<Control-Shift-R>", lambda e: reset_size())
 win.bind("<Control-Shift-N>", lambda e: subprocess.Popen([sys.executable, __file__]))
 win.bind("<F5>", lambda e: run_())
 win.protocol("WM_DELETE_WINDOW", save_on_exit)
@@ -638,6 +751,15 @@ edit_menu.add_separator()
 edit_menu.add_command(label="", command=indent, accelerator="Tab")
 edit_menu.add_command(label="", command=unindent, accelerator="Shift+Tab")
 menu.add_cascade(menu=edit_menu, label="")
+
+view_menu = tk.Menu(menu, tearoff=0)
+view_menu.add_command(label="Yazı Tipi Boyutunu Arttır", command=increase_size, accelerator="Ctrl++")
+view_menu.add_command(label="Yazı Tipi Boyutunu Azalt", command=increase_size, accelerator="Ctrl+-")
+view_menu.add_command(label="Varsayılan Yazı Tipi Boyutunu Ayarla", command=reset_size, accelerator="Ctrl+Shift+R")
+view_menu.add_separator()
+view_menu.add_checkbutton(label="Tam Ekran", onvalue=True, offvalue=False, variable=fullscreen)
+view_menu.add_checkbutton(label="Ekranı Kapla", onvalue=True, offvalue=False, variable=cover)
+menu.add_cascade(menu=view_menu, label="Görünüm")
 
 run_menu = tk.Menu(menu, tearoff=0)
 run_menu.add_command(label="", command=run_, accelerator="F5")
