@@ -321,11 +321,11 @@ def auto_indent(event=None):
 
 def show_about():
     if language.get() == "türkçe":
-        messagebox.showinfo("Hakkında", "BukiPython v1.0.0\n© Telif Hakkı 2025 Buğra US")
+        messagebox.showinfo("Hakkında", "BukiPython v1.0.5\n© Telif Hakkı 2025 Buğra US")
     elif language.get() == "english":
-        messagebox.showinfo("About", "BukiPython v1.0.0\n© Copyright 2025 Buğra US")
+        messagebox.showinfo("About", "BukiPython v1.0.5\n© Copyright 2025 Buğra US")
     elif language.get() == "deutsch":
-        messagebox.showinfo("Über", "BukiPython v1.0.0\n© Urheberrecht 2025 Buğra US")
+        messagebox.showinfo("Über", "BukiPython v1.0.5\n© Urheberrecht 2025 Buğra US")
     
 def run_terminal():
     subprocess.Popen(
@@ -781,5 +781,6 @@ menu.add_cascade(menu=pre_menu, label="")
 update_settings()
 
 text.bind('<Button-3>', lambda event: edit_menu.tk_popup(event.x_root, event.y_root))
+
 
 win.mainloop()
