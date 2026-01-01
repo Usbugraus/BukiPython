@@ -6,9 +6,11 @@ import tkinter as tk
 from tkinter import messagebox, filedialog
 import ctypes
 import json
+import builtins, keyword
 from ToolTip import ToolTip
 from ErrorHandler import error_handler
 from SyntaxHighlighter import highlight
+from AutoCompleter import AutoCompleter
 
 try:
     ctypes.windll.shcore.SetProcessDpiAwareness(1)
@@ -34,6 +36,7 @@ changed = False
 current_file = None
 filepath = None
 font_size = 10
+names = dir(builtins) + keyword.kwlist
 SYNTAX_COLORS = {
     "keyword": ["#bf0000", ("Consolas", font_size, "bold")],
     "string": ["#00bf00", ("Consolas", font_size)],
@@ -76,6 +79,13 @@ editor.grid(padx=10, pady=10, row=1, column=0, columnspan=2, sticky="nsew")
 
 status_bar = tk.Label(win, bd=1, relief="raised", text="", padx=5, pady=5, anchor="w")
 status_bar.grid(padx=10, pady=(0, 10), row=2, column=0, columnspan=2, sticky="ew")
+
+line_numbers = tk.Canvas(
+    editor,
+    width=45,
+    background="#f0f0f0",
+    highlightthickness=0
+)
 
 text = tk.Text(editor, wrap="none", width=60, height=20, font=("Consolas", font_size), bd=1, undo=True, padx=5, pady=5)
 
@@ -154,6 +164,8 @@ def open_file():
         update()
         save.config(state="disabled")
         update_status()
+        redraw_line_numbers()
+        text.edit_reset()
 
 def new_file():
     global current_file, filepath, changed
@@ -182,6 +194,8 @@ def new_file():
     text.config(xscrollcommand=scroll_h.set, yscrollcommand=scroll.set)
     save.config(state="disabled")
     update_status()
+    redraw_line_numbers()
+    text.edit_reset()
     win.update_idletasks()
 
 def update_title():
@@ -321,13 +335,14 @@ def auto_indent(event=None):
 
 def show_about():
     if language.get() == "türkçe":
-        messagebox.showinfo("Hakkında", "BukiPython v1.0.5\n© Telif Hakkı 2025 Buğra US")
+        messagebox.showinfo("Hakkında", "BukiPython v1.1.0\n© Telif Hakkı 2025-2026 Buğra US")
     elif language.get() == "english":
-        messagebox.showinfo("About", "BukiPython v1.0.5\n© Copyright 2025 Buğra US")
+        messagebox.showinfo("About", "BukiPython v1.1.0\n© Copyright 2025-2026 Buğra US")
     elif language.get() == "deutsch":
-        messagebox.showinfo("Über", "BukiPython v1.0.5\n© Urheberrecht 2025 Buğra US")
+        messagebox.showinfo("Über", "BukiPython v1.1.0\n© Urheberrecht 2025-2026 Buğra US")
     
 def run_terminal():
+    global python_path
     subprocess.Popen(
         [
             "cmd.exe",
@@ -336,7 +351,8 @@ def run_terminal():
             "echo == Python == && "
             "where python && "
             "echo == Pip == && "
-            "where pip"
+            "where pip && "
+            f"echo Python Path: {python_path}"
         ],
         creationflags=subprocess.CREATE_NEW_CONSOLE
     )
@@ -643,8 +659,59 @@ def update_status():
         newfile_status = "New"
     if language.get() == "deutsch":
         newfile_status = "Neu"
+        
+    def get_cursor_position():
+        index = text.index(tk.INSERT)
+        line, col = index.split(".")
+        return int(line), int(col) + 1
     
-    status_bar.config(text=f"{os.path.basename(current_file) if current_file else newfile_status} | {text.index('insert')}")
+    line, col = get_cursor_position()
+    filename = os.path.basename(current_file) if current_file else newfile_status
+
+    status_bar.config(
+        text=f"{filename} | {line} : {col}"
+    )
+    
+def update_status_idle(event=None):
+    win.after_idle(update_status)
+    
+def redraw_line_numbers(event=None):
+    line_numbers.delete("all")
+
+    i = text.index("@0,0")
+    while True:
+        dline = text.dlineinfo(i)
+        if dline is None:
+            break
+
+        y = dline[1]
+        line_number = str(i).split(".")[0]
+        line_numbers.create_text(
+            40, y,
+            anchor="ne",
+            text=line_number,
+            font=("Consolas", 10)
+        )
+
+        i = text.index(f"{i}+1line")
+        
+    text.edit_modified(False)
+    
+def on_text_scroll(*args):
+    scroll.set(*args)
+    redraw_line_numbers()
+
+def on_scrollbar(*args):
+    text.yview(*args)
+    redraw_line_numbers()
+    
+def toggle_fullscreen(event=None):
+    fullscreen.set(not fullscreen.get())
+    win.attributes("-fullscreen", fullscreen.get())
+
+def exit_fullscreen(event=None):
+    fullscreen.set(False)
+    win.attributes("-fullscreen", False)
 
 if hasattr(sys, "_MEIPASS"):
     icon_path = os.path.join(sys._MEIPASS, "Icon.ico")
@@ -689,14 +756,18 @@ about.grid(row=0, column=0, sticky="e")
 
 scroll = tk.Scrollbar(editor)
 scroll.pack(side="right", padx=(0, 5), pady=5, fill="y")
-scroll.config(command=text.yview)
+scroll.config(command=on_scrollbar)
 
 scroll_h = tk.Scrollbar(editor, orient="horizontal")
 scroll_h.pack(side="bottom", padx=(5, 0), pady=(0, 5), fill="x")
 scroll_h.config(command=text.xview)
-text.config(xscrollcommand=scroll_h.set, yscrollcommand=scroll.set)
+text.config(
+    xscrollcommand=scroll_h.set,
+    yscrollcommand=on_text_scroll
+)
 
-text.pack(fill="both", padx=(5, 0), pady=(5, 0), expand=True)
+line_numbers.pack(side="left", fill="y", padx=(5, 0), pady=5)
+text.pack(side="left", fill="both", expand=True, padx=(5, 0), pady=(5, 0))
 
 show_tooltip.trace_add("write", update_settings)
 language.trace_add("write", update_settings)
@@ -708,7 +779,7 @@ text.bind("<<Modified>>", update)
 text.bind("<Return>", auto_indent, add="+")
 text.bind("<KeyRelease>", autosv, add='+')
 text.bind("<KeyRelease>", lambda e: update_status(), add='+')
-text.bind("<Button-1>", lambda e: update_status(), add='+')
+text.bind("<ButtonRelease-1>", update_status_idle, add="+")
 text.bind("<Shift-Tab>", unindent)
 text.bind("<Tab>", indent)
 win.bind("<Control-s>", lambda e: save_file())
@@ -723,6 +794,8 @@ win.bind("<Control-minus>", lambda e: decrease_size())
 win.bind("<Control-Shift-R>", lambda e: reset_size())
 win.bind("<Control-Shift-N>", lambda e: subprocess.Popen([sys.executable, __file__]))
 win.bind("<F5>", lambda e: run_())
+win.bind("<F11>", toggle_fullscreen)
+win.bind("<Escape>", exit_fullscreen)
 win.protocol("WM_DELETE_WINDOW", save_on_exit)
 
 menu = tk.Menu(win)
@@ -753,12 +826,12 @@ edit_menu.add_command(label="", command=unindent, accelerator="Shift+Tab")
 menu.add_cascade(menu=edit_menu, label="")
 
 view_menu = tk.Menu(menu, tearoff=0)
-view_menu.add_command(label="Yazı Tipi Boyutunu Arttır", command=increase_size, accelerator="Ctrl++")
-view_menu.add_command(label="Yazı Tipi Boyutunu Azalt", command=increase_size, accelerator="Ctrl+-")
-view_menu.add_command(label="Varsayılan Yazı Tipi Boyutunu Ayarla", command=reset_size, accelerator="Ctrl+Shift+R")
+view_menu.add_command(label="", command=increase_size, accelerator="Ctrl++")
+view_menu.add_command(label="", command=increase_size, accelerator="Ctrl+-")
+view_menu.add_command(label="", command=reset_size, accelerator="Ctrl+Shift+R")
 view_menu.add_separator()
-view_menu.add_checkbutton(label="Tam Ekran", onvalue=True, offvalue=False, variable=fullscreen)
-view_menu.add_checkbutton(label="Ekranı Kapla", onvalue=True, offvalue=False, variable=cover)
+view_menu.add_checkbutton(label="", onvalue=True, offvalue=False, variable=fullscreen, accelerator="F11")
+view_menu.add_checkbutton(label="", onvalue=True, offvalue=False, variable=cover)
 menu.add_cascade(menu=view_menu, label="Görünüm")
 
 run_menu = tk.Menu(menu, tearoff=0)
@@ -778,9 +851,18 @@ lang_menu.add_radiobutton(label='Deutsch', variable=language, value="deutsch")
 pre_menu.add_cascade(menu=lang_menu, label="")
 menu.add_cascade(menu=pre_menu, label="")
 
+text.bind("<<Modified>>", redraw_line_numbers, add="+")
+text.bind("<MouseWheel>", redraw_line_numbers)
+text.bind("<Button-4>", redraw_line_numbers)
+text.bind("<Button-5>", redraw_line_numbers)
+text.bind("<Configure>", redraw_line_numbers)
+
+redraw_line_numbers()
+
 update_settings()
 
 text.bind('<Button-3>', lambda event: edit_menu.tk_popup(event.x_root, event.y_root))
 
+AutoCompleter(text, names)
 
 win.mainloop()
